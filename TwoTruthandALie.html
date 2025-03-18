@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>2 Truths and a Lie</title>
+        <style>
+            body {
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                background-color: #f5f5f5;
+                margin: 0;
+                padding: 0;
+                color: #333;
+            }
+
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+
+            h1,
+            h2,
+            h3 {
+                text-align: center;
+                color: #2c3e50;
+            }
+
+            .card {
+                background-color: white;
+                border-radius: 8px;
+                padding: 20px;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }
+
+            button {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 10px 15px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 16px;
+                transition: background-color 0.3s;
+            }
+
+            button:hover {
+                background-color: #2980b9;
+            }
+
+            button:disabled {
+                background-color: #95a5a6;
+                cursor: not-allowed;
+            }
+
+            input,
+            textarea {
+                width: 100%;
+                padding: 10px;
+                margin-bottom: 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 16px;
+            }
+
+            .host-controls {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 20px;
+            }
+
+            .statement {
+                padding: 15px;
+                margin: 10px 0;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+
+            .statement:hover {
+                background-color: #f8f8f8;
+            }
+
+            .statement.selected {
+                background-color: #e1f5fe;
+                border-color: #81d4fa;
+            }
+
+            .hidden {
+                display: none;
+            }
+
+            .player-list {
+                margin-bottom: 20px;
+            }
+
+            .scoreboard {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            .scoreboard th,
+            .scoreboard td {
+                padding: 10px;
+                text-align: left;
+                border-bottom: 1px solid #ddd;
+            }
+
+            .winner {
+                font-weight: bold;
+                color: #27ae60;
+            }
+
+            .current-player {
+                color: #3498db;
+                font-weight: bold;
+            }
+
+            #game-code-display {
+                font-size: 24px;
+                font-weight: bold;
+                text-align: center;
+                margin: 20px 0;
+                color: #3498db;
+            }
+
+            .share-link {
+                text-align: center;
+                margin-bottom: 20px;
+            }
+
+            .share-link input {
+                width: 70%;
+                margin-right: 10px;
+            }
+
+            .loader {
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #3498db;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                animation: spin 2s linear infinite;
+                display: inline-block;
+                vertical-align: middle;
+                margin-left: 10px;
+            }
+
+            @keyframes spin {
+                0% {
+                    transform: rotate(0deg);
+                }
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+
+            @media (max-width: 600px) {
+                .host-controls {
+                    flex-direction: column;
+                }
+
+                .host-controls button {
+                    margin-bottom: 10px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>2 Truths and a Lie</h1>
+
+            <!-- Game Code Entry -->
+            <div id="game-code-entry" class="card">
+                <h2>Join or Create Game</h2>
+                <div>
+                    <input
+                        type="text"
+                        id="game-code-input"
+                        placeholder="Enter game code (or leave blank to create new game)"
+                    />
+                    <div>
+                        <input
+                            type="text"
+                            id="player-name-input"
+                            placeholder="Enter your name"
+                        />
+                        <button id="join-create-game">Join/Create Game</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Waiting Room -->
+            <div id="waiting-room" class="card hidden">
+                <h2>Waiting Room</h2>
+                <div id="game-code-display"></div>
+
+                <div class="share-link">
+                    <input type="text" id="share-url" readonly />
+                    <button id="copy-link">Copy Link</button>
+                </div>
+
+                <div id="host-controls" class="host-controls hidden">
+                    <button id="start-game">Start Game</button>
+                    <button id="reset-game">Reset Game</button>
+                </div>
+
+                <h3>Players:</h3>
+                <ul id="player-list" class="player-list"></ul>
+                <div id="waiting-message">
+                    Waiting for host to start the game...
+                </div>
+            </div>
+
+            <!-- Statement Entry -->
+            <div id="statement-entry" class="card hidden">
+                <h2>Enter Your Statements</h2>
+                <p>
+                    Enter 2 true statements and 1 false statement about
+                    yourself:
+                </p>
+                <textarea
+                    id="statement1"
+                    placeholder="Statement 1"
+                    rows="2"
+                ></textarea>
+                <textarea
+                    id="statement2"
+                    placeholder="Statement 2"
+                    rows="2"
+                ></textarea>
+                <textarea
+                    id="statement3"
+                    placeholder="Statement 3"
+                    rows="2"
+                ></textarea>
+                <p>Which one is the lie?</p>
+                <select id="lie-selection">
+                    <option value="1">Statement 1</option>
+                    <option value="2">Statement 2</option>
+                    <option value="3">Statement 3</option>
+                </select>
+                <button id="submit-statements">Submit</button>
+            </div>
+
+            <!-- Gameplay Screen -->
+            <div id="gameplay" class="card hidden">
+                <h2>Guess the Lie</h2>
+                <h3 id="current-player"></h3>
+                <div id="statements-container">
+                    <div
+                        class="statement"
+                        data-index="0"
+                        id="game-statement1"
+                    ></div>
+                    <div
+                        class="statement"
+                        data-index="1"
+                        id="game-statement2"
+                    ></div>
+                    <div
+                        class="statement"
+                        data-index="2"
+                        id="game-statement3"
+                    ></div>
+                </div>
+                <div id="own-statements-message" class="hidden">
+                    <p>These are your statements. Wait for others to guess.</p>
+                </div>
+                <div id="guess-controls">
+                    <button id="submit-guess" disabled>Submit Guess</button>
+                </div>
+                <div id="waiting-for-guesses" class="hidden">
+                    <p>
+                        Waiting for other players to submit their guesses...
+                        <span class="loader"></span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Results Screen for Current Round -->
+            <div id="round-results" class="card hidden">
+                <h2>Round Results</h2>
+                <h3 id="round-player"></h3>
+                <div id="round-statements"></div>
+                <div id="lie-reveal"></div>
+                <div id="correct-guessers"></div>
+                <div id="host-next-controls" class="hidden">
+                    <button id="next-round">Next Player</button>
+                </div>
+                <div id="waiting-for-next" class="hidden">
+                    <p>
+                        Waiting for host to continue...
+                        <span class="loader"></span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Final Scoreboard -->
+            <div id="final-results" class="card hidden">
+                <h2>Final Results</h2>
+                <table class="scoreboard">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="final-scores"></tbody>
+                </table>
+                <div id="winner-announcement"></div>
+                <div id="host-replay-controls" class="hidden">
+                    <button id="play-again">Play Again</button>
+                </div>
+                <div id="waiting-for-replay" class="hidden">
+                    <p>
+                        Waiting for host to start a new game...
+                        <span class="loader"></span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Firebase App (the core Firebase SDK) -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-app-compat.min.js"></script>
+        <!-- Firebase Database -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-database-compat.min.js"></script>
+
+        <script>
+            // Firebase Configuration
+            const firebaseConfig = {
+                apiKey: "AIzaSyD1mF-pL3UJafr9Z7FWFMa5Ou1dY6DYlxE",
+                authDomain: "two-truths-and-a-lie-378cb.firebaseapp.com",
+                databaseURL:
+                    "https://two-truths-and-a-lie-378cb-default-rtdb.firebaseio.com",
+                projectId: "two-truths-and-a-lie-378cb",
+                storageBucket: "two-truths-and-a-lie-378cb.appspot.com",
+                messagingSenderId: "565276059353",
+                appId: "1:565276059353:web:3e6bc7b5c2be2f92eb6d1c",
+            };
+
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            const database = firebase.database();
+
+            // Game variables
+            let gameId = "";
+            let playerId = "";
+            let playerName = "";
+            let isHost = false;
+
+            // DOM Elements
+            const screens = {
+                codeEntry: document.getElementById("game-code-entry"),
+                waiting: document.getElementById("waiting-room"),
+                entry: document.getElementById("statement-entry"),
+                gameplay: document.getElementById("gameplay"),
+                roundResults: document.getElementById("round-results"),
+                finalResults: document.getElementById("final-results"),
+            };
+
+            // Generate a random game code
+            function generateGameCode() {
+                return Math.random().toString(36).substring(2, 8).toUpperCase();
+            }
+
+            // Generate a random player ID
+            function generatePlayerId() {
+                return "player_" + Math.random().toString(36).substring(2, 15);
+            }
+
+            // Show a specific screen
+            function showScreen(screenName) {
+                Object.keys(screens).forEach((key) => {
+                    screens[key].classList.add("hidden");
+                });
+                screens[screenName].classList.remove("hidden");
+            }
+
+            // Update player list in waiting room
+            function updatePlayerList(players) {
+                const playerList = document.getElementById("player-list");
+                playerList.innerHTML = "";
+
+                Object.keys(players).forEach((pid) => {
+                    const player = players[pid];
+                    const listItem = document.createElement("li");
+
+                    if (player.hasSubmitted) {
+                        listItem.textContent = `${player.name} ✓`;
+                    } else {
+                        listItem.textContent = player.name;
+                    }
+
+                    if (player.isHost) {
+                        listItem.textContent += " (Host)";
+                    }
+
+                    playerList.appendChild(listItem);
+                });
+            }
+
+            // Create a new game
+            function createGame() {
+                gameId = generateGameCode();
+                playerId = generatePlayerId();
+                playerName = document
+                    .getElementById("player-name-input")
+                    .value.trim();
+                isHost = true;
+
+                // Create game in database
+                const gameRef = database.ref("games/" + gameId);
+                gameRef.set({
+                    created: firebase.database.ServerValue.TIMESTAMP,
+                    status: "waiting", // waiting, statements, gameplay, results
+                    currentPlayerIndex: -1,
+                    hostId: playerId,
+                });
+
+                // Add player to game
+                const playerRef = database.ref(
+                    "games/" + gameId + "/players/" + playerId
+                );
+                playerRef.set({
+                    name: playerName,
+                    isHost: true,
+                    hasSubmitted: false,
+                    score: 0,
+                    joinedAt: firebase.database.ServerValue.TIMESTAMP,
+                });
+
+                // Set up game listeners
+                setupGameListeners();
+
+                // Display game code and show waiting room
+                document.getElementById("game-code-display").textContent =
+                    "Game Code: " + gameId;
+                const shareUrl =
+                    window.location.href.split("?")[0] + "?game=" + gameId;
+                document.getElementById("share-url").value = shareUrl;
+
+                document
+                    .getElementById("host-controls")
+                    .classList.remove("hidden");
+                showScreen("waiting");
+            }
+
+            // Join an existing game
+            function joinGame(code) {
+                gameId = code.toUpperCase();
+                playerId = generatePlayerId();
+                playerName = document
+                    .getElementById("player-name-input")
+                    .value.trim();
+
+                // Check if game exists
+                const gameRef = database.ref("games/" + gameId);
+                gameRef.once("value", (snapshot) => {
+                    const gameData = snapshot.val();
+
+                    if (!gameData) {
+                        alert(
+                            "Game not found. Please check the code and try again."
+                        );
+                        return;
+                    }
+
+                    // Check if game has started and not allowing new players
+                    if (
+                        gameData.status !== "waiting" &&
+                        gameData.status !== "statements"
+                    ) {
+                        alert(
+                            "This game has already started and is not accepting new players."
+                        );
+                        return;
+                    }
+
+                    // Add player to game
+                    const playerRef = database.ref(
+                        "games/" + gameId + "/players/" + playerId
+                    );
+                    playerRef.set({
+                        name: playerName,
+                        isHost: false,
+                        hasSubmitted: false,
+                        score: 0,
+                        joinedAt: firebase.database.ServerValue.TIMESTAMP,
+                    });
+
+                    // Set up game listeners
+                    setupGameListeners();
+
+                    // Display game code and show waiting room
+                    document.getElementById("game-code-display").textContent =
+                        "Game Code: " + gameId;
+                    const shareUrl =
+                        window.location.href.split("?")[0] + "?game=" + gameId;
+                    document.getElementById("share-url").value = shareUrl;
+
+                    // Hide host controls for non-hosts
+                    if (gameData.hostId === playerId) {
+                        isHost = true;
+                        document
+                            .getElementById("host-controls")
+                            .classList.remove("hidden");
+                    } else {
+                        isHost = false;
+                        document
+                            .getElementById("host-controls")
+                            .classList.add("hidden");
+                    }
+
+                    showScreen("waiting");
+                });
+            }
+
+            // Set up listeners for game state changes
+            function setupGameListeners() {
+                // Listen for game status changes
+                const gameRef = database.ref("games/" + gameId);
+                gameRef.on("value", (snapshot) => {
+                    const gameData = snapshot.val();
+                    if (!gameData) return;
+
+                    // Update UI based on game status
+                    switch (gameData.status) {
+                        case "waiting":
+                            showScreen("waiting");
+                            break;
+                        case "statements":
+                            // Check if player has already submitted statements
+                            const playerRef = database.ref(
+                                "games/" + gameId + "/players/" + playerId
+                            );
+                            playerRef.once("value", (playerSnap) => {
+                                const playerData = playerSnap.val();
+                                if (playerData && playerData.hasSubmitted) {
+                                    showScreen("waiting");
+                                    document.getElementById(
+                                        "waiting-message"
+                                    ).textContent =
+                                        "Waiting for all players to submit their statements...";
+                                } else {
+                                    showScreen("entry");
+                                }
+                            });
+                            break;
+                        case "gameplay":
+                            handleGameplayUpdate(gameData);
+                            break;
+                        case "roundResults":
+                            handleRoundResultsUpdate(gameData);
+                            break;
+                        case "finalResults":
+                            handleFinalResultsUpdate(gameData);
+                            break;
+                    }
+
+                    // Update player list if available
+                    if (gameData.players) {
+                        updatePlayerList(gameData.players);
+                    }
+                });
+            }
+
+            // Handle gameplay updates
+            function handleGameplayUpdate(gameData) {
+                // Don't update if not in gameplay mode yet
+                if (
+                    gameData.currentPlayerIndex === undefined ||
+                    gameData.currentPlayerIndex < 0
+                )
+                    return;
+
+                // Get current player
+                const players = Object.keys(gameData.players);
+                const sortedPlayers = players.sort((a, b) => {
+                    return (
+                        gameData.players[a].joinedAt -
+                        gameData.players[b].joinedAt
+                    );
+                });
+
+                // Check if gameplay is complete
+                if (gameData.currentPlayerIndex >= sortedPlayers.length) {
+                    return; // Will be handled by status change to 'finalResults'
+                }
+
+                const currentPlayerId =
+                    sortedPlayers[gameData.currentPlayerIndex];
+                const currentPlayer = gameData.players[currentPlayerId];
+
+                // Update UI
+                document.getElementById(
+                    "current-player"
+                ).textContent = `${currentPlayer.name}'s Statements`;
+
+                // Display statements
+                if (
+                    gameData.statements &&
+                    gameData.statements[currentPlayerId]
+                ) {
+                    const playerStatements =
+                        gameData.statements[currentPlayerId];
+                    document.getElementById("game-statement1").textContent =
+                        playerStatements.statements[0];
+                    document.getElementById("game-statement2").textContent =
+                        playerStatements.statements[1];
+                    document.getElementById("game-statement3").textContent =
+                        playerStatements.statements[2];
+                }
+
+                // Reset statement selection
+                document.querySelectorAll(".statement").forEach((stmt) => {
+                    stmt.classList.remove("selected");
+                });
+                document.getElementById("submit-guess").disabled = true;
+
+                // Show/hide appropriate UI elements
+                if (currentPlayerId === playerId) {
+                    // This is the current player's statements
+                    document
+                        .getElementById("own-statements-message")
+                        .classList.remove("hidden");
+                    document
+                        .getElementById("guess-controls")
+                        .classList.add("hidden");
+                    document
+                        .getElementById("waiting-for-guesses")
+                        .classList.remove("hidden");
+                } else {
+                    // This is another player's statements
+                    document
+                        .getElementById("own-statements-message")
+                        .classList.add("hidden");
+                    document
+                        .getElementById("guess-controls")
+                        .classList.remove("hidden");
+                    document
+                        .getElementById("waiting-for-guesses")
+                        .classList.add("hidden");
+
+                    // Check if player has already guessed
+                    if (
+                        gameData.guesses &&
+                        gameData.guesses[currentPlayerId] &&
+                        gameData.guesses[currentPlayerId][playerId]
+                    ) {
+                        // Already guessed, show waiting message
+                        document
+                            .getElementById("guess-controls")
+                            .classList.add("hidden");
+                        document
+                            .getElementById("waiting-for-guesses")
+                            .classList.remove("hidden");
+                    }
+                }
+
+                showScreen("gameplay");
+            }
+
+            // Handle round results updates
+            function handleRoundResultsUpdate(gameData) {
+                if (
+                    gameData.currentPlayerIndex === undefined ||
+                    gameData.currentPlayerIndex < 0
+                )
+                    return;
+
+                // Get current player
+                const players = Object.keys(gameData.players);
+                const sortedPlayers = players.sort((a, b) => {
+                    return (
+                        gameData.players[a].joinedAt -
+                        gameData.players[b].joinedAt
+                    );
+                });
+
+                const currentPlayerId =
+                    sortedPlayers[gameData.currentPlayerIndex];
+                const currentPlayer = gameData.players[currentPlayerId];
+
+                // Display player name
+                document.getElementById(
+                    "round-player"
+                ).textContent = `${currentPlayer.name}'s Round`;
+
+                // Display statements and reveal
+                const statementsContainer =
+                    document.getElementById("round-statements");
+                statementsContainer.innerHTML = "";
+
+                if (
+                    gameData.statements &&
+                    gameData.statements[currentPlayerId]
+                ) {
+                    const playerStatements =
+                        gameData.statements[currentPlayerId];
+
+                    playerStatements.statements.forEach((stmt, index) => {
+                        const isLie = index === playerStatements.lie;
+                        const stmtDiv = document.createElement("div");
+                        stmtDiv.className = `statement ${
+                            isLie ? "selected" : ""
+                        }`;
+                        stmtDiv.textContent = stmt;
+                        statementsContainer.appendChild(stmtDiv);
+                    });
+
+                    // Reveal the lie
+                    const lieReveal = document.getElementById("lie-reveal");
+                    lieReveal.innerHTML = `<p>The lie was: <strong>${
+                        playerStatements.statements[playerStatements.lie]
+                    }</strong></p>`;
+                }
+
+                // Show who guessed correctly
+                const correctGuessers =
+                    document.getElementById("correct-guessers");
+                correctGuessers.innerHTML = "<h4>Correct Guesses:</h4>";
+
+                if (gameData.guesses && gameData.guesses[currentPlayerId]) {
+                    const playerGuesses = gameData.guesses[currentPlayerId];
+                    const correctList = document.createElement("ul");
+                    let hasCorrectGuesses = false;
+
+                    Object.keys(playerGuesses).forEach((guesserId) => {
+                        if (guesserId === currentPlayerId) return; // Skip current player
+
+                        const guess = playerGuesses[guesserId];
+                        const lieIndex =
+                            gameData.statements[currentPlayerId].lie;
+
+                        if (guess === lieIndex) {
+                            // Correct guess
+                            const listItem = document.createElement("li");
+                            listItem.textContent =
+                                gameData.players[guesserId].name;
+                            correctList.appendChild(listItem);
+                            hasCorrectGuesses = true;
+                        }
+                    });
+
+                    if (hasCorrectGuesses) {
+                        correctGuessers.appendChild(correctList);
+                    } else {
+                        correctGuessers.innerHTML +=
+                            "<p>No one guessed correctly!</p>";
+                    }
+                }
+
+                // Show/hide host controls
+                if (isHost) {
+                    document
+                        .getElementById("host-next-controls")
+                        .classList.remove("hidden");
+                    document
+                        .getElementById("waiting-for-next")
+                        .classList.add("hidden");
+                } else {
+                    document
+                        .getElementById("host-next-controls")
+                        .classList.add("hidden");
+                    document
+                        .getElementById("waiting-for-next")
+                        .classList.remove("hidden");
+                }
+
+                showScreen("roundResults");
+            }
+
+            // Handle final results updates
+            function handleFinalResultsUpdate(gameData) {
+                // Create scoreboard
+                const scoresTable = document.getElementById("final-scores");
+                scoresTable.innerHTML = "";
+
+                if (!gameData.players) return;
+
+                // Get players sorted by score
+                const players = Object.keys(gameData.players);
+                const sortedPlayers = players.sort((a, b) => {
+                    return (
+                        gameData.players[b].score - gameData.players[a].score
+                    );
+                });
+
+                // Find maximum score
+                const maxScore = Math.max(
+                    ...sortedPlayers.map((pid) => gameData.players[pid].score)
+                );
+
+                // Add rows to scoreboard
+                sortedPlayers.forEach((pid) => {
+                    const player = gameData.players[pid];
+                    const row = document.createElement("tr");
+
+                    // Add winner class to highest scorers
+                    if (player.score === maxScore) {
+                        row.className = "winner";
+                    }
+
+                    const nameCell = document.createElement("td");
+                    nameCell.textContent = player.name;
+
+                    const scoreCell = document.createElement("td");
+                    scoreCell.textContent = player.score;
+
+                    row.appendChild(nameCell);
+                    row.appendChild(scoreCell);
+                    scoresTable.appendChild(row);
+                });
+
+                // Find winners
+                const winners = sortedPlayers
+                    .filter((pid) => gameData.players[pid].score === maxScore)
+                    .map((pid) => gameData.players[pid].name);
+
+                // Display winner announcement
+                const winnerAnnouncement = document.getElementById(
+                    "winner-announcement"
+                );
+                if (winners.length === 1) {
+                    winnerAnnouncement.innerHTML = `<h3>🏆 ${winners[0]} wins with ${maxScore} points! 🏆</h3>`;
+                } else {
+                    winnerAnnouncement.innerHTML = `<h3>🏆 Tie between ${winners.join(
+                        " and "
+                    )} with ${maxScore} points each! 🏆</h3>`;
+                }
+
+                // Show/hide host controls
+                if (isHost) {
+                    document
+                        .getElementById("host-replay-controls")
+                        .classList.remove("hidden");
+                    document
+                        .getElementById("waiting-for-replay")
+                        .classList.add("hidden");
+                } else {
+                    document
+                        .getElementById("host-replay-controls")
+                        .classList.add("hidden");
+                    document
+                        .getElementById("waiting-for-replay")
+                        .classList.remove("hidden");
+                }
+
+                showScreen("finalResults");
+            }
+
+            // Event Listeners
+            document.addEventListener("DOMContentLoaded", () => {
+                // Check URL for game code
+                const urlParams = new URLSearchParams(window.location.search);
+                const gameParam = urlParams.get("game");
+                if (gameParam) {
+                    document.getElementById("game-code-input").value =
+                        gameParam;
+                }
+
+                // Join/Create Game button
+                document
+                    .getElementById("join-create-game")
+                    .addEventListener("click", () => {
+                        const code = document
+                            .getElementById("game-code-input")
+                            .value.trim();
+                        const name = document
+                            .getElementById("player-name-input")
+                            .value.trim();
+
+                        if (!name) {
+                            alert("Please enter your name.");
+                            return;
+                        }
+
+                        if (code) {
+                            joinGame(code);
+                        } else {
+                            createGame();
+                        }
+                    });
+
+                // Copy link button
+                document
+                    .getElementById("copy-link")
+                    .addEventListener("click", () => {
+                        const shareUrl = document.getElementById("share-url");
+                        shareUrl.select();
+                        document.execCommand("copy");
+                        alert("Link copied to clipboard!");
+                    });
+
+                // Start Game button
+                document
+                    .getElementById("start-game")
+                    .addEventListener("click", () => {
+                        const gameRef = database.ref("games/" + gameId);
+                        gameRef.once("value", (snapshot) => {
+                            const gameData = snapshot.val();
+                            if (!gameData) return;
+
+                            // Check if enough players
+                            if (Object.keys(gameData.players).length < 2) {
+                                alert(
+                                    "You need at least 2 players to start the game."
+                                );
+                                return;
+                            }
+
+                            // Update game status
+                            gameRef.update({
+                                status: "statements",
+                            });
+                        });
+                    });
+
+                // Reset Game button
+                document
+                    .getElementById("reset-game")
+                    .addEventListener("click", () => {
+                        if (
+                            confirm(
+                                "Are you sure you want to reset the game? This will remove all players and start over."
+                            )
+                        ) {
+                            // Create new game
+                            const newGameRef = database.ref("games/" + gameId);
+                            newGameRef.set({
+                                created:
+                                    firebase.database.ServerValue.TIMESTAMP,
+                                status: "waiting",
+                                currentPlayerIndex: -1,
+                                hostId: playerId,
+                                players: {
+                                    [playerId]: {
+                                        name: playerName,
+                                        isHost: true,
+                                        hasSubmitted: false,
+                                        score: 0,
+                                        joinedAt:
+                                            firebase.database.ServerValue
+                                                .TIMESTAMP,
+                                    },
+                                },
+                            });
+                        }
+                    });
+
+                // Submit Statements button
+                document
+                    .getElementById("submit-statements")
+                    .addEventListener("click", () => {
+                        const statement1 = document
+                            .getElementById("statement1")
+                            .value.trim();
+                        const statement2 = document
+                            .getElementById("statement2")
+                            .value.trim();
+                        const statement3 = document
+                            .getElementById("statement3")
+                            .value.trim();
+                        const lieSel =
+                            document.getElementById("lie-selection").value;
+
+                        if (!statement1 || !statement2 || !statement3) {
+                            alert("Please enter all three statements.");
+                            return;
+                        }
+
+                        // Add statements to database
+                        const statementsRef = database.ref(
+                            "games/" + gameId + "/statements/" + playerId
+                        );
+                        statementsRef.set({
+                            statements: [statement1, statement2, statement3],
+                            lie: parseInt(lieSel) - 1, // Convert to 0-based index
+                        });
+
+                        // Mark player as submitted
+                        const playerRef = database.ref(
+                            "games/" + gameId + "/players/" + playerId
+                        );
+                        playerRef.update({
+                            hasSubmitted: true,
+                        });
+
+                        // Check if all players have submitted
+                        const gameRef = database.ref("games/" + gameId);
+                        gameRef.once("value", (snapshot) => {
+                            const gameData = snapshot.val();
+                            if (!gameData || !gameData.players) return;
+
+                            const allSubmitted = Object.keys(
+                                gameData.players
+                            ).every(
+                                (pid) => gameData.players[pid].hasSubmitted
+                            );
+
+                            if (allSubmitted && isHost) {
+                                // Start first round automatically
+                                gameRef.update({
+                                    status: "gameplay",
+                                    currentPlayerIndex: 0,
+                                });
+                            } else {
+                                // Show waiting screen
+                                showScreen("waiting");
+                                document.getElementById(
+                                    "waiting-message"
+                                ).textContent =
+                                    "Waiting for all players to submit their statements...";
+                            }
+                        });
+                    });
+
+                // Statement Selection
+                document.querySelectorAll(".statement").forEach((stmt) => {
+                    stmt.addEventListener("click", (event) => {
+                        // Get current player from database
+                        const gameRef = database.ref("games/" + gameId);
+                        gameRef.once("value", (snapshot) => {
+                            const gameData = snapshot.val();
+                            if (!gameData) return;
+
+                            // Get current player
+                            const players = Object.keys(gameData.players);
+                            const sortedPlayers = players.sort((a, b) => {
+                                return (
+                                    gameData.players[a].joinedAt -
+                                    gameData.players[b].joinedAt
+                                );
+                            });
+
+                            const currentPlayerId =
+                                sortedPlayers[gameData.currentPlayerIndex];
+
+                            // Don't allow selection if this is the player's own statements
+                            if (currentPlayerId === playerId) return;
+
+                            const selectedIndex = parseInt(
+                                event.target.dataset.index
+                            );
+
+                            // Toggle selection on clicked statement and deselect others
+                            document
+                                .querySelectorAll(".statement")
+                                .forEach((s) => {
+                                    s.classList.remove("selected");
+                                });
+                            event.target.classList.add("selected");
+
+                            // Enable submit button
+                            document.getElementById(
+                                "submit-guess"
+                            ).disabled = false;
+                        });
+                    });
+                });
+
+                // Submit Guess button
+                document
+                    .getElementById("submit-guess")
+                    .addEventListener("click", () => {
+                        // Find selected statement
+                        const selected = document.querySelector(
+                            ".statement.selected"
+                        );
+                        if (!selected) return;
+
+                        const selectedIndex = parseInt(selected.dataset.index);
+
+                        // Get current player from database
+                        const gameRef = database.ref("games/" + gameId);
+                        gameRef.once("value", (snapshot) => {
+                            const gameData = snapshot.val();
+                            if (!gameData) return;
+
+                            // Get current player
+                            const players = Object.keys(gameData.players);
+                            const sortedPlayers = players.sort((a, b) => {
+                                return (
+                                    gameData.players[a].joinedAt -
+                                    gameData.players[b].joinedAt
+                                );
+                            });
+
+                            const currentPlayerId =
+                                sortedPlayers[gameData.currentPlayerIndex];
+
+                            // Save guess to database
+                            const guessRef = database.ref(
+                                "games/" +
+                                    gameId +
+                                    "/guesses/" +
+                                    currentPlayerId +
+                                    "/" +
+                                    playerId
+                            );
+                            guessRef.set(selectedIndex);
+
+                            // Show waiting message
+                            document
+                                .getElementById("guess-controls")
+                                .classList.add("hidden");
+                            document
+                                .getElementById("waiting-for-guesses")
+                                .classList.remove("hidden");
+
+                            // Check if all players have guessed
+                            checkAllGuessed(gameData, currentPlayerId);
+                        });
+                    });
+
+                // Next Round button
+                document
+                    .getElementById("next-round")
+                    .addEventListener("click", () => {
+                        const gameRef = database.ref("games/" + gameId);
+                        gameRef.once("value", (snapshot) => {
+                            const gameData = snapshot.val();
+                            if (!gameData) return;
+
+                            // Get players
+                            const players = Object.keys(gameData.players);
+                            const sortedPlayers = players.sort((a, b) => {
+                                return (
+                                    gameData.players[a].joinedAt -
+                                    gameData.players[b].joinedAt
+                                );
+                            });
+
+                            // Check if game is over
+                            const nextPlayerIndex =
+                                gameData.currentPlayerIndex + 1;
+                            if (nextPlayerIndex >= sortedPlayers.length) {
+                                // End game
+                                gameRef.update({
+                                    status: "finalResults",
+                                });
+                            } else {
+                                // Next player
+                                gameRef.update({
+                                    status: "gameplay",
+                                    currentPlayerIndex: nextPlayerIndex,
+                                });
+                            }
+                        });
+                    });
+
+                // Play Again button
+                document
+                    .getElementById("play-again")
+                    .addEventListener("click", () => {
+                        if (
+                            confirm("Start a new game with the same players?")
+                        ) {
+                            // Reset game but keep players
+                            const gameRef = database.ref("games/" + gameId);
+                            gameRef.once("value", (snapshot) => {
+                                const gameData = snapshot.val();
+                                if (!gameData) return;
+
+                                // Reset player data but keep names and host status
+                                const updatedPlayers = {};
+                                Object.keys(gameData.players).forEach((pid) => {
+                                    updatedPlayers[pid] = {
+                                        name: gameData.players[pid].name,
+                                        isHost: gameData.players[pid].isHost,
+                                        hasSubmitted: false,
+                                        score: 0,
+                                        joinedAt:
+                                            gameData.players[pid].joinedAt,
+                                    };
+                                });
+
+                                // Update game
+                                gameRef.update({
+                                    status: "statements",
+                                    currentPlayerIndex: -1,
+                                    players: updatedPlayers,
+                                });
+
+                                // Remove statements and guesses
+                                const statementsRef = database.ref(
+                                    "games/" + gameId + "/statements"
+                                );
+                                statementsRef.remove();
+
+                                const guessesRef = database.ref(
+                                    "games/" + gameId + "/guesses"
+                                );
+                                guessesRef.remove();
+                            });
+                        }
+                    });
+
+                // Helper function to check if all players have guessed
+                function checkAllGuessed(gameData, currentPlayerId) {
+                    // Skip if not all players have submitted statements
+                    if (!gameData.statements) return;
+
+                    // Get all players except current
+                    const otherPlayers = Object.keys(gameData.players).filter(
+                        (pid) => pid !== currentPlayerId
+                    );
+
+                    // Check if guesses exist
+                    if (
+                        !gameData.guesses ||
+                        !gameData.guesses[currentPlayerId]
+                    ) {
+                        // Not everyone has guessed
+                        return;
+                    }
+
+                    // Check if everyone has guessed
+                    const allGuessed = otherPlayers.every(
+                        (pid) =>
+                            gameData.guesses[currentPlayerId] &&
+                            gameData.guesses[currentPlayerId][pid] !== undefined
+                    );
+
+                    if (allGuessed) {
+                        // Calculate scores
+                        updateScores(gameData, currentPlayerId);
+
+                        // Move to round results
+                        const gameRef = database.ref("games/" + gameId);
+                        gameRef.update({
+                            status: "roundResults",
+                        });
+                    }
+                }
+
+                // Helper function to update scores
+                function updateScores(gameData, currentPlayerId) {
+                    if (
+                        !gameData.statements ||
+                        !gameData.statements[currentPlayerId] ||
+                        !gameData.guesses ||
+                        !gameData.guesses[currentPlayerId]
+                    ) {
+                        return;
+                    }
+
+                    const lieIndex = gameData.statements[currentPlayerId].lie;
+
+                    // Update scores for each player
+                    Object.keys(gameData.guesses[currentPlayerId]).forEach(
+                        (guesserId) => {
+                            if (guesserId === currentPlayerId) return; // Skip current player
+
+                            const guess =
+                                gameData.guesses[currentPlayerId][guesserId];
+
+                            // Award points for correct guesses
+                            if (guess === lieIndex) {
+                                // Correct guess - add 1 point
+                                const playerRef = database.ref(
+                                    "games/" +
+                                        gameId +
+                                        "/players/" +
+                                        guesserId +
+                                        "/score"
+                                );
+                                playerRef.transaction(
+                                    (score) => (score || 0) + 1
+                                );
+                            }
+                        }
+                    );
+
+                    // Calculate how many people were fooled
+                    const totalGuessers =
+                        Object.keys(gameData.guesses[currentPlayerId]).length -
+                        1; // Exclude self
+                    const correctGuessers = Object.keys(
+                        gameData.guesses[currentPlayerId]
+                    ).filter(
+                        (guesserId) =>
+                            guesserId !== currentPlayerId &&
+                            gameData.guesses[currentPlayerId][guesserId] ===
+                                lieIndex
+                    ).length;
+
+                    const fooledCount = totalGuessers - correctGuessers;
+
+                    // Award points to current player for fooling others
+                    if (fooledCount > 0) {
+                        const playerRef = database.ref(
+                            "games/" +
+                                gameId +
+                                "/players/" +
+                                currentPlayerId +
+                                "/score"
+                        );
+                        playerRef.transaction(
+                            (score) => (score || 0) + fooledCount
+                        );
+                    }
+                }
+
+                // The URL parameters check was already present in the original code
+                // This event listener initializses the game at the end of the script
+            });
+        </script>
+    </body>
+</html>
