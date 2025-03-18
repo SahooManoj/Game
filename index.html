@@ -460,66 +460,88 @@
                     return;
                 }
 
+                console.log("Attempting to join game: " + gameId); // Add logging
+
                 // Check if game exists
                 const gameRef = database.ref("games/" + gameId);
-                gameRef.once("value", (snapshot) => {
-                    const gameData = snapshot.val();
+                gameRef
+                    .once("value")
+                    .then((snapshot) => {
+                        const gameData = snapshot.val();
+                        console.log("Game data:", gameData); // Debug what's returned
 
-                    if (!gameData) {
-                        alert(
-                            "Game not found. Please check the code and try again."
+                        if (!gameData) {
+                            alert(
+                                "Game not found. Please check the code and try again."
+                            );
+                            return;
+                        }
+
+                        // Check if game has started and not allowing new players
+                        if (
+                            gameData.status !== "waiting" &&
+                            gameData.status !== "statements"
+                        ) {
+                            alert(
+                                "This game has already started and is not accepting new players."
+                            );
+                            return;
+                        }
+
+                        // Add player to game
+                        const playerRef = database.ref(
+                            "games/" + gameId + "/players/" + playerId
                         );
-                        return;
-                    }
+                        return playerRef.set({
+                            name: playerName,
+                            isHost: false,
+                            hasSubmitted: false,
+                            score: 0,
+                            joinedAt: firebase.database.ServerValue.TIMESTAMP,
+                        });
+                    })
+                    .then(() => {
+                        console.log("Player added successfully"); // Confirm player was added
 
-                    // Check if game has started and not allowing new players
-                    if (
-                        gameData.status !== "waiting" &&
-                        gameData.status !== "statements"
-                    ) {
-                        alert(
-                            "This game has already started and is not accepting new players."
-                        );
-                        return;
-                    }
+                        // Set up game listeners
+                        setupGameListeners();
 
-                    // Add player to game
-                    const playerRef = database.ref(
-                        "games/" + gameId + "/players/" + playerId
-                    );
-                    playerRef.set({
-                        name: playerName,
-                        isHost: false,
-                        hasSubmitted: false,
-                        score: 0,
-                        joinedAt: firebase.database.ServerValue.TIMESTAMP,
+                        // Display game code and show waiting room
+                        document.getElementById(
+                            "game-code-display"
+                        ).textContent = "Game Code: " + gameId;
+                        const shareUrl =
+                            window.location.href.split("?")[0] +
+                            "?game=" +
+                            gameId;
+                        document.getElementById("share-url").value = shareUrl;
+
+                        // Check host status again to ensure it's set correctly
+                        const gameRef = database.ref("games/" + gameId);
+                        return gameRef.once("value");
+                    })
+                    .then((snapshot) => {
+                        const gameData = snapshot.val();
+
+                        // Hide host controls for non-hosts
+                        if (gameData.hostId === playerId) {
+                            isHost = true;
+                            document
+                                .getElementById("host-controls")
+                                .classList.remove("hidden");
+                        } else {
+                            isHost = false;
+                            document
+                                .getElementById("host-controls")
+                                .classList.add("hidden");
+                        }
+
+                        showScreen("waiting");
+                    })
+                    .catch((error) => {
+                        console.error("Error joining game:", error);
+                        alert("Error joining game: " + error.message);
                     });
-
-                    // Set up game listeners
-                    setupGameListeners();
-
-                    // Display game code and show waiting room
-                    document.getElementById("game-code-display").textContent =
-                        "Game Code: " + gameId;
-                    const shareUrl =
-                        window.location.href.split("?")[0] + "?game=" + gameId;
-                    document.getElementById("share-url").value = shareUrl;
-
-                    // Hide host controls for non-hosts
-                    if (gameData.hostId === playerId) {
-                        isHost = true;
-                        document
-                            .getElementById("host-controls")
-                            .classList.remove("hidden");
-                    } else {
-                        isHost = false;
-                        document
-                            .getElementById("host-controls")
-                            .classList.add("hidden");
-                    }
-
-                    showScreen("waiting");
-                });
             }
 
             // Set up listeners for game state changes
