@@ -455,6 +455,11 @@
                     .getElementById("player-name-input")
                     .value.trim();
 
+                if (!playerName) {
+                    alert("Please enter your name.");
+                    return;
+                }
+
                 // Check if game exists
                 const gameRef = database.ref("games/" + gameId);
                 gameRef.once("value", (snapshot) => {
@@ -861,7 +866,7 @@
                         gameParam;
                 }
 
-                // Join/Create Game button
+                // Join/Create Game button with improved handling
                 document
                     .getElementById("join-create-game")
                     .addEventListener("click", () => {
@@ -883,6 +888,14 @@
                             createGame();
                         }
                     });
+
+                // Auto-join if URL contains game code and player has a name
+                if (
+                    gameParam &&
+                    document.getElementById("player-name-input").value.trim()
+                ) {
+                    joinGame(gameParam);
+                }
 
                 // Copy link button
                 document
@@ -927,26 +940,57 @@
                                 "Are you sure you want to reset the game? This will remove all players and start over."
                             )
                         ) {
-                            // Create new game
-                            const newGameRef = database.ref("games/" + gameId);
-                            newGameRef.set({
-                                created:
-                                    firebase.database.ServerValue.TIMESTAMP,
-                                status: "waiting",
-                                currentPlayerIndex: -1,
-                                hostId: playerId,
-                                players: {
-                                    [playerId]: {
-                                        name: playerName,
-                                        isHost: true,
-                                        hasSubmitted: false,
-                                        score: 0,
-                                        joinedAt:
-                                            firebase.database.ServerValue
-                                                .TIMESTAMP,
+                            // Reset the game but keep the same gameId
+                            const gameRef = database.ref("games/" + gameId);
+
+                            gameRef
+                                .set({
+                                    created:
+                                        firebase.database.ServerValue.TIMESTAMP,
+                                    status: "waiting",
+                                    currentPlayerIndex: -1,
+                                    hostId: playerId,
+                                    players: {
+                                        [playerId]: {
+                                            name: playerName,
+                                            isHost: true,
+                                            hasSubmitted: false,
+                                            score: 0,
+                                            joinedAt:
+                                                firebase.database.ServerValue
+                                                    .TIMESTAMP,
+                                        },
                                     },
-                                },
-                            });
+                                })
+                                .then(() => {
+                                    // Update the UI to reflect the reset
+                                    document.getElementById(
+                                        "player-list"
+                                    ).innerHTML = "";
+                                    document.getElementById(
+                                        "waiting-message"
+                                    ).textContent =
+                                        "Waiting for host to start the game...";
+
+                                    // Make sure guesses and statements are cleared
+                                    database
+                                        .ref("games/" + gameId + "/statements")
+                                        .remove();
+                                    database
+                                        .ref("games/" + gameId + "/guesses")
+                                        .remove();
+
+                                    showScreen("waiting");
+                                })
+                                .catch((error) => {
+                                    console.error(
+                                        "Error resetting game:",
+                                        error
+                                    );
+                                    alert(
+                                        "Error resetting game. Please try again."
+                                    );
+                                });
                         }
                     });
 
