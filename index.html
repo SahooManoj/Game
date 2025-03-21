@@ -477,7 +477,9 @@
                 function updateCurrentPlayer() {
                     const playersArray = Object.keys(gameState.players)
                         .filter(
-                            (playerId) => gameState.players[playerId].submitted
+                            (playerId) =>
+                                gameState.players[playerId].submitted &&
+                                !gameState.players[playerId].isHost
                         )
                         .map((playerId) => ({
                             id: playerId,
@@ -541,7 +543,9 @@
                 function updateCurrentPlayerForPlayer() {
                     const playersArray = Object.keys(gameState.players)
                         .filter(
-                            (playerId) => gameState.players[playerId].submitted
+                            (playerId) =>
+                                gameState.players[playerId].submitted &&
+                                !gameState.players[playerId].isHost
                         )
                         .map((playerId) => ({
                             id: playerId,
