@@ -170,7 +170,7 @@
                             ).textContent = gameCode;
                             document.getElementById(
                                 "copy-link"
-                            ).textContent = `Share this link: ${window.location.href}?game=${gameCode}`;
+                            ).textContent = `${window.location.href}?game=${gameCode}`;
                             showScreen("hostLobby");
 
                             // Listen for player changes with proper reference
@@ -1168,6 +1168,9 @@
                         .getElementById("create-game")
                         .addEventListener("click", createGame);
                     document
+                        .getElementById("play-again")
+                        .addEventListener("click", createGame);
+                    document
                         .getElementById("join-game")
                         .addEventListener("click", () => showScreen("join"));
                     document
@@ -1196,6 +1199,9 @@
                         .addEventListener("click", nextPlayer);
                     document
                         .getElementById("end-game")
+                        .addEventListener("click", exitGame);
+                    document
+                        .getElementById("exit-game")
                         .addEventListener("click", exitGame);
                     document
                         .getElementById("copy-link-btn")
