@@ -230,6 +230,14 @@
                         return;
                     }
 
+                    const playerName = document
+                        .getElementById("player-name")
+                        .value.trim();
+                    if (!playerName) {
+                        alert("Please enter your name!");
+                        return;
+                    }
+
                     // Check if game exists with proper reference
                     const gameRef = ref(database, `games/${gameCode}`);
                     get(gameRef).then((snapshot) => {
@@ -245,14 +253,6 @@
                             alert(
                                 "Game already in progress. You cannot join now."
                             );
-                            return;
-                        }
-
-                        const playerName = document
-                            .getElementById("player-name")
-                            .value.trim();
-                        if (!playerName) {
-                            alert("Please enter your name!");
                             return;
                         }
 
