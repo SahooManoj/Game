@@ -1143,6 +1143,11 @@
                                 winnerDiv.innerHTML = `<p>🎉 ${winnerNames} won with ${highestScore} points! 🎉</p>`;
                                 resultsContainer.appendChild(winnerDiv);
                             }
+                            document.getElementById(
+                                "play-again"
+                            ).style.display = "none";
+                            document.getElementById("exit-game").style.display =
+                                "none";
                         })
                         .catch((error) => {
                             console.error("Error getting scores:", error);
