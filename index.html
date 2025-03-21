@@ -471,6 +471,18 @@
                         const votes = snapshot.val() || {};
                         checkIfVoted(votes);
                     });
+
+                    // Add listener for game status to detect when game ends
+                    const statusRef = ref(
+                        database,
+                        `games/${gameState.gameId}/status`
+                    );
+                    onValue(statusRef, (snapshot) => {
+                        const status = snapshot.val();
+                        if (status === "results") {
+                            showGameResultsForPlayer();
+                        }
+                    });
                 }
 
                 // Update current player display for host
@@ -950,7 +962,7 @@
                                             "results-container"
                                         );
                                     resultsContainer.innerHTML =
-                                        "<h3>Game Complete!</h3>";
+                                        "<h2>Game Complete!</h2>";
 
                                     // Create scoreboard
                                     const scoreboardDiv =
@@ -1862,7 +1874,6 @@
 
             <!-- Game Results Screen -->
             <div id="game-results" class="card hidden">
-                <h2>Game Results</h2>
                 <div class="results" id="results-container">
                     <!-- Results will be populated here -->
                 </div>
