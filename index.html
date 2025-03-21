@@ -740,18 +740,74 @@
 
                 // Reveal the lie
                 function revealLie() {
-                    const currentPlayer = Object.keys(gameState.players)
+                    const playersArray = Object.keys(gameState.players)
                         .filter(
-                            (playerId) => gameState.players[playerId].submitted
+                            (playerId) =>
+                                gameState.players[playerId].submitted &&
+                                !gameState.players[playerId].isHost
                         )
                         .map((playerId) => ({
                             id: playerId,
                             ...gameState.players[playerId],
                         }))[gameState.currentPlayerIndex];
 
+                    const currentPlayer = playersArray;
                     const lieIndex = currentPlayer.lieIndex;
 
-                    // Mark statements
+                    // Get votes to calculate scores
+                    const votesRef = ref(
+                        database,
+                        `games/${gameState.gameId}/votes`
+                    );
+                    get(votesRef).then((snapshot) => {
+                        const votes = snapshot.val() || {};
+
+                        // Initialize scores ref if it doesn't exist
+                        const scoresRef = ref(
+                            database,
+                            `games/${gameState.gameId}/scores`
+                        );
+                        get(scoresRef).then((scoresSnapshot) => {
+                            let scores = scoresSnapshot.val() || {};
+
+                            // Initialize scores for all players if needed
+                            Object.keys(gameState.players).forEach(
+                                (playerId) => {
+                                    if (!scores[playerId]) {
+                                        scores[playerId] = 0;
+                                    }
+                                }
+                            );
+
+                            // Award points for correct guesses (players who identified the lie)
+                            Object.keys(votes).forEach((voterId) => {
+                                if (votes[voterId].toString() === lieIndex) {
+                                    // Player guessed correctly
+                                    scores[voterId] =
+                                        (scores[voterId] || 0) + 100;
+                                }
+                            });
+
+                            // Award points to current player if they fooled others
+                            const totalVotes = Object.keys(votes).length;
+                            const correctVotes = Object.values(votes).filter(
+                                (vote) => vote.toString() === lieIndex
+                            ).length;
+
+                            // Award points based on how many players were fooled
+                            const fooledCount = totalVotes - correctVotes;
+                            if (fooledCount > 0) {
+                                scores[currentPlayer.id] =
+                                    (scores[currentPlayer.id] || 0) +
+                                    fooledCount * 50;
+                            }
+
+                            // Save scores back to database
+                            set(scoresRef, scores);
+                        });
+                    });
+
+                    // Mark statements (existing code)
                     document
                         .querySelectorAll("#statement-container .statement")
                         .forEach((el, index) => {
@@ -771,7 +827,7 @@
                         .getElementById("next-player")
                         .classList.remove("hidden");
 
-                    // Update game state with proper reference
+                    // Update game state
                     const revealedLieRef = ref(
                         database,
                         `games/${gameState.gameId}/revealedLie`
@@ -855,39 +911,150 @@
 
                 // Show game results
                 function showGameResults() {
-                    const statusRef = ref(
+                    const scoresRef = ref(
                         database,
-                        `games/${gameState.gameId}/status`
+                        `games/${gameState.gameId}/scores`
                     );
-                    set(statusRef, "results")
-                        .then(() => {
-                            showScreen("gameResults");
+                    get(scoresRef)
+                        .then((snapshot) => {
+                            const scores = snapshot.val() || {};
 
-                            const resultsContainer =
-                                document.getElementById("results-container");
-                            resultsContainer.innerHTML =
-                                "<h3>Game Complete!</h3><p>Thanks for playing!</p>";
+                            // Find the winner(s)
+                            let highestScore = 0;
+                            let winners = [];
 
-                            // Add play again button functionality
-                            document
-                                .getElementById("play-again")
-                                .addEventListener("click", () => {
-                                    if (gameState.isHost) {
-                                        resetGame();
-                                    } else {
-                                        resetPlayerForNewGame();
+                            Object.keys(scores).forEach((playerId) => {
+                                const playerScore = scores[playerId];
+                                if (playerScore > highestScore) {
+                                    highestScore = playerScore;
+                                    winners = [playerId];
+                                } else if (
+                                    playerScore === highestScore &&
+                                    playerScore > 0
+                                ) {
+                                    winners.push(playerId);
+                                }
+                            });
+
+                            // Update game status
+                            const statusRef = ref(
+                                database,
+                                `games/${gameState.gameId}/status`
+                            );
+                            set(statusRef, "results")
+                                .then(() => {
+                                    showScreen("gameResults");
+
+                                    const resultsContainer =
+                                        document.getElementById(
+                                            "results-container"
+                                        );
+                                    resultsContainer.innerHTML =
+                                        "<h3>Game Complete!</h3>";
+
+                                    // Create scoreboard
+                                    const scoreboardDiv =
+                                        document.createElement("div");
+                                    scoreboardDiv.className = "scoreboard";
+                                    scoreboardDiv.innerHTML =
+                                        "<h4>Final Scores:</h4>";
+
+                                    // Get sorted scores
+                                    const sortedPlayers = Object.keys(
+                                        scores
+                                    ).sort((a, b) => scores[b] - scores[a]);
+
+                                    // Create table for scores
+                                    const scoreTable =
+                                        document.createElement("table");
+                                    scoreTable.className = "score-table";
+
+                                    // Add table header
+                                    const headerRow =
+                                        document.createElement("tr");
+                                    headerRow.innerHTML =
+                                        "<th>Rank</th><th>Player</th><th>Score</th>";
+                                    scoreTable.appendChild(headerRow);
+
+                                    // Add player scores
+                                    sortedPlayers.forEach((playerId, index) => {
+                                        if (gameState.players[playerId]) {
+                                            const row =
+                                                document.createElement("tr");
+                                            const isWinner =
+                                                winners.includes(playerId);
+
+                                            row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${gameState.players[playerId].name} ${
+                                                isWinner ? "👑" : ""
+                                            }</td>
+                        <td>${scores[playerId]}</td>
+                    `;
+
+                                            if (isWinner) {
+                                                row.className = "winner";
+                                            }
+
+                                            scoreTable.appendChild(row);
+                                        }
+                                    });
+
+                                    scoreboardDiv.appendChild(scoreTable);
+                                    resultsContainer.appendChild(scoreboardDiv);
+
+                                    // Winner announcement
+                                    if (winners.length > 0) {
+                                        const winnerNames = winners
+                                            .map(
+                                                (id) =>
+                                                    gameState.players[id].name
+                                            )
+                                            .join(" and ");
+                                        const winnerDiv =
+                                            document.createElement("div");
+                                        winnerDiv.className =
+                                            "winner-announcement";
+                                        winnerDiv.innerHTML = `<p>🎉 ${winnerNames} won with ${highestScore} points! 🎉</p>`;
+                                        resultsContainer.appendChild(winnerDiv);
                                     }
-                                });
 
-                            // Add exit button functionality
-                            document
-                                .getElementById("exit-game")
-                                .addEventListener("click", () => {
-                                    exitGame();
+                                    // Add play again and exit buttons
+                                    const buttonsDiv =
+                                        document.createElement("div");
+                                    buttonsDiv.className = "result-buttons";
+                                    buttonsDiv.innerHTML = `
+                <button id="play-again" class="primary-button">Play Again</button>
+                <button id="exit-game" class="secondary-button">Exit Game</button>
+            `;
+                                    resultsContainer.appendChild(buttonsDiv);
+
+                                    // Add event listeners
+                                    document
+                                        .getElementById("play-again")
+                                        .addEventListener("click", () => {
+                                            if (gameState.isHost) {
+                                                resetGame();
+                                            } else {
+                                                resetPlayerForNewGame();
+                                            }
+                                        });
+
+                                    document
+                                        .getElementById("exit-game")
+                                        .addEventListener("click", () => {
+                                            exitGame();
+                                        });
+                                })
+                                .catch((error) => {
+                                    console.error(
+                                        "Error showing game results:",
+                                        error
+                                    );
                                 });
                         })
                         .catch((error) => {
-                            console.error("Error showing game results:", error);
+                            console.error("Error getting scores:", error);
                         });
                 }
 
@@ -899,6 +1066,7 @@
                         currentPlayerIndex: 0,
                         votes: null,
                         revealedLie: null,
+                        scores: null,
                     })
                         .then(() => {
                             // Reset all players to not submitted
