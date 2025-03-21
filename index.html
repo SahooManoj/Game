@@ -287,6 +287,16 @@
                                 ).textContent = gameCode;
                                 showScreen("playerInput");
 
+                                // Update URL to include player name
+                                const encodedPlayerName =
+                                    encodeURIComponent(playerName);
+                                const newUrl = `${window.location.origin}${window.location.pathname}?game=${gameCode}/${encodedPlayerName}`;
+                                window.history.pushState(
+                                    { path: newUrl },
+                                    "",
+                                    newUrl
+                                );
+
                                 // Listen for game status changes with proper reference
                                 const statusRef = ref(
                                     database,
@@ -300,6 +310,8 @@
                                     ) {
                                         gameState.gameStarted = true;
                                         startGameForPlayer();
+                                    } else if (status === "results") {
+                                        showGameResultsForPlayer();
                                     }
                                 });
 
@@ -480,7 +492,7 @@
                     onValue(statusRef, (snapshot) => {
                         const status = snapshot.val();
                         if (status === "results") {
-                            showGameResultsForPlayer();
+                            showGameResults();
                         }
                     });
                 }
@@ -1161,11 +1173,23 @@
                     const urlParams = new URLSearchParams(
                         window.location.search
                     );
-                    const gameCode = urlParams.get("game");
+                    const gameParam = urlParams.get("game");
 
-                    if (gameCode) {
+                    if (gameParam) {
+                        // Check if the game code includes a player name
+                        const parts = gameParam.split("/");
+                        const gameCode = parts[0];
+
                         document.getElementById("game-code-input").value =
                             gameCode;
+
+                        // If there's a player name, pre-fill the player name field
+                        if (parts.length > 1) {
+                            const playerName = decodeURIComponent(parts[1]);
+                            document.getElementById("join-player-name").value =
+                                playerName;
+                        }
+
                         showScreen("join");
                     }
                 }
