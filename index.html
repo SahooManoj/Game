@@ -150,19 +150,18 @@
                     };
 
                     // Create game in Firebase with proper reference
-                    const gameRef = database.ref("games").child(gameCode);
-                    gameRef
-                        .set({
-                            host: playerId,
-                            status: "lobby",
-                            players: {
-                                [playerId]: {
-                                    name: playerName,
-                                    isHost: true,
-                                    submitted: false,
-                                },
+                    const gameRef = ref(database, `games/${gameCode}`);
+                    set(gameRef, {
+                        host: playerId,
+                        status: "lobby",
+                        players: {
+                            [playerId]: {
+                                name: playerName,
+                                isHost: true,
+                                submitted: false,
                             },
-                        })
+                        },
+                    })
                         .then(() => {
                             document.getElementById(
                                 "game-code-display"
@@ -173,7 +172,11 @@
                             showScreen("hostLobby");
 
                             // Listen for player changes with proper reference
-                            gameRef.child("players").on("value", (snapshot) => {
+                            const playersRef = ref(
+                                database,
+                                `games/${gameCode}/players`
+                            );
+                            onValue(playersRef, (snapshot) => {
                                 const players = snapshot.val() || {};
                                 gameState.players = players;
                                 updatePlayerList(players, "player-list");
@@ -193,7 +196,11 @@
                             });
 
                             // Listen for game status changes with proper reference
-                            gameRef.child("status").on("value", (snapshot) => {
+                            const statusRef = ref(
+                                database,
+                                `games/${gameCode}/status`
+                            );
+                            onValue(statusRef, (snapshot) => {
                                 const status = snapshot.val();
                                 if (
                                     status === "playing" &&
@@ -222,8 +229,8 @@
                     }
 
                     // Check if game exists with proper reference
-                    const gameRef = database.ref("games").child(gameCode);
-                    gameRef.once("value", (snapshot) => {
+                    const gameRef = ref(database, `games/${gameCode}`);
+                    get(gameRef).then((snapshot) => {
                         const gameData = snapshot.val();
                         if (!gameData) {
                             alert(
@@ -263,13 +270,15 @@
                         };
 
                         // Add player to the game with proper reference
-                        gameRef
-                            .child(`players/${playerId}`)
-                            .set({
-                                name: playerName,
-                                isHost: false,
-                                submitted: false,
-                            })
+                        const playerRef = ref(
+                            database,
+                            `games/${gameCode}/players/${playerId}`
+                        );
+                        set(playerRef, {
+                            name: playerName,
+                            isHost: false,
+                            submitted: false,
+                        })
                             .then(() => {
                                 document.getElementById(
                                     "player-game-code-display"
@@ -277,30 +286,33 @@
                                 showScreen("playerInput");
 
                                 // Listen for game status changes with proper reference
-                                gameRef
-                                    .child("status")
-                                    .on("value", (snapshot) => {
-                                        const status = snapshot.val();
-                                        if (
-                                            status === "playing" &&
-                                            !gameState.gameStarted
-                                        ) {
-                                            gameState.gameStarted = true;
-                                            startGameForPlayer();
-                                        }
-                                    });
+                                const statusRef = ref(
+                                    database,
+                                    `games/${gameCode}/status`
+                                );
+                                onValue(statusRef, (snapshot) => {
+                                    const status = snapshot.val();
+                                    if (
+                                        status === "playing" &&
+                                        !gameState.gameStarted
+                                    ) {
+                                        gameState.gameStarted = true;
+                                        startGameForPlayer();
+                                    }
+                                });
 
                                 // Listen for player changes with proper reference
-                                gameRef
-                                    .child("players")
-                                    .on("value", (snapshot) => {
-                                        gameState.players =
-                                            snapshot.val() || {};
-                                        updatePlayerList(
-                                            gameState.players,
-                                            "player-waiting-list"
-                                        );
-                                    });
+                                const playersRef = ref(
+                                    database,
+                                    `games/${gameCode}/players`
+                                );
+                                onValue(playersRef, (snapshot) => {
+                                    gameState.players = snapshot.val() || {};
+                                    updatePlayerList(
+                                        gameState.players,
+                                        "player-waiting-list"
+                                    );
+                                });
                             })
                             .catch((error) => {
                                 console.error("Error joining game:", error);
@@ -331,17 +343,15 @@
                     const statements = [statement1, statement2, statement3];
 
                     // Update player with proper reference
-                    const playerRef = database
-                        .ref("games")
-                        .child(gameState.gameId)
-                        .child("players")
-                        .child(gameState.playerId);
-                    playerRef
-                        .update({
-                            statements: statements,
-                            lieIndex: lieIndex,
-                            submitted: true,
-                        })
+                    const playerRef = ref(
+                        database,
+                        `games/${gameState.gameId}/players/${gameState.playerId}`
+                    );
+                    update(playerRef, {
+                        statements: statements,
+                        lieIndex: lieIndex,
+                        submitted: true,
+                    })
                         .then(() => {
                             showScreen("playerWaiting");
                             updatePlayerList(
@@ -362,14 +372,11 @@
 
                 // Start the game (host)
                 function startGame() {
-                    const gameRef = database
-                        .ref("games")
-                        .child(gameState.gameId);
-                    gameRef
-                        .update({
-                            status: "playing",
-                            currentPlayerIndex: 0,
-                        })
+                    const gameRef = ref(database, `games/${gameState.gameId}`);
+                    update(gameRef, {
+                        status: "playing",
+                        currentPlayerIndex: 0,
+                    })
                         .then(() => {
                             startGameForHost();
                         })
@@ -402,24 +409,26 @@
                     gameState.currentPlayerIndex = 0;
                     gameState.currentPlayerId = playersArray[0].id;
 
-                    const gameRef = database
-                        .ref("games")
-                        .child(gameState.gameId);
-
                     // Set up listeners for votes with proper reference
-                    gameRef.child("votes").on("value", (snapshot) => {
+                    const votesRef = ref(
+                        database,
+                        `games/${gameState.gameId}/votes`
+                    );
+                    onValue(votesRef, (snapshot) => {
                         const votes = snapshot.val() || {};
                         updateVotesDisplay(votes);
                     });
 
                     // Set up listener for current player with proper reference
-                    gameRef
-                        .child("currentPlayerIndex")
-                        .on("value", (snapshot) => {
-                            const index = snapshot.val() || 0;
-                            gameState.currentPlayerIndex = index;
-                            updateCurrentPlayer();
-                        });
+                    const currentPlayerIndexRef = ref(
+                        database,
+                        `games/${gameState.gameId}/currentPlayerIndex`
+                    );
+                    onValue(currentPlayerIndexRef, (snapshot) => {
+                        const index = snapshot.val() || 0;
+                        gameState.currentPlayerIndex = index;
+                        updateCurrentPlayer();
+                    });
 
                     updateCurrentPlayer();
                 }
@@ -428,21 +437,23 @@
                 function startGameForPlayer() {
                     showScreen("gamePlayPlayer");
 
-                    const gameRef = database
-                        .ref("games")
-                        .child(gameState.gameId);
-
                     // Set up listener for current player with proper reference
-                    gameRef
-                        .child("currentPlayerIndex")
-                        .on("value", (snapshot) => {
-                            const index = snapshot.val() || 0;
-                            gameState.currentPlayerIndex = index;
-                            updateCurrentPlayerForPlayer();
-                        });
+                    const currentPlayerIndexRef = ref(
+                        database,
+                        `games/${gameState.gameId}/currentPlayerIndex`
+                    );
+                    onValue(currentPlayerIndexRef, (snapshot) => {
+                        const index = snapshot.val() || 0;
+                        gameState.currentPlayerIndex = index;
+                        updateCurrentPlayerForPlayer();
+                    });
 
                     // Set up listener for revealed lie with proper reference
-                    gameRef.child("revealedLie").on("value", (snapshot) => {
+                    const revealedLieRef = ref(
+                        database,
+                        `games/${gameState.gameId}/revealedLie`
+                    );
+                    onValue(revealedLieRef, (snapshot) => {
                         const revealed = snapshot.val();
                         if (revealed) {
                             revealLieForPlayer(revealed);
@@ -450,7 +461,11 @@
                     });
 
                     // Set up listener for votes with proper reference
-                    gameRef.child("votes").on("value", (snapshot) => {
+                    const votesRef = ref(
+                        database,
+                        `games/${gameState.gameId}/votes`
+                    );
+                    onValue(votesRef, (snapshot) => {
                         const votes = snapshot.val() || {};
                         checkIfVoted(votes);
                     });
@@ -679,13 +694,11 @@
                     }
 
                     // Submit vote with proper reference
-                    const voteRef = database
-                        .ref("games")
-                        .child(gameState.gameId)
-                        .child("votes")
-                        .child(gameState.playerId);
-                    voteRef
-                        .set(statementId)
+                    const voteRef = ref(
+                        database,
+                        `games/${gameState.gameId}/votes/${gameState.playerId}`
+                    );
+                    set(voteRef, statementId)
                         .then(() => {
                             gameState.voted = true;
                             document
@@ -748,11 +761,11 @@
                         .classList.remove("hidden");
 
                     // Update game state with proper reference
-                    database
-                        .ref("games")
-                        .child(gameState.gameId)
-                        .child("revealedLie")
-                        .set(lieIndex);
+                    const revealedLieRef = ref(
+                        database,
+                        `games/${gameState.gameId}/revealedLie`
+                    );
+                    set(revealedLieRef, lieIndex);
                 }
 
                 // Reveal the lie for player
@@ -803,16 +816,23 @@
                         return;
                     }
 
-                    const gameRef = database
-                        .ref("games")
-                        .child(gameState.gameId);
-                    gameRef
-                        .child("currentPlayerIndex")
-                        .set(nextIndex)
+                    const currentPlayerIndexRef = ref(
+                        database,
+                        `games/${gameState.gameId}/currentPlayerIndex`
+                    );
+                    set(currentPlayerIndexRef, nextIndex)
                         .then(() => {
                             // Clear votes and revealed lie with proper references
-                            gameRef.child("votes").set({});
-                            gameRef.child("revealedLie").set(null);
+                            const votesRef = ref(
+                                database,
+                                `games/${gameState.gameId}/votes`
+                            );
+                            const revealedLieRef = ref(
+                                database,
+                                `games/${gameState.gameId}/revealedLie`
+                            );
+                            set(votesRef, {});
+                            set(revealedLieRef, null);
                         })
                         .catch((error) => {
                             console.error(
@@ -824,11 +844,11 @@
 
                 // Show game results
                 function showGameResults() {
-                    database
-                        .ref("games")
-                        .child(gameState.gameId)
-                        .child("status")
-                        .set("results")
+                    const statusRef = ref(
+                        database,
+                        `games/${gameState.gameId}/status`
+                    );
+                    set(statusRef, "results")
                         .then(() => {
                             showScreen("gameResults");
 
@@ -862,16 +882,13 @@
 
                 // Reset game for a new round
                 function resetGame() {
-                    const gameRef = database
-                        .ref("games")
-                        .child(gameState.gameId);
-                    gameRef
-                        .update({
-                            status: "lobby",
-                            currentPlayerIndex: 0,
-                            votes: null,
-                            revealedLie: null,
-                        })
+                    const gameRef = ref(database, `games/${gameState.gameId}`);
+                    update(gameRef, {
+                        status: "lobby",
+                        currentPlayerIndex: 0,
+                        votes: null,
+                        revealedLie: null,
+                    })
                         .then(() => {
                             // Reset all players to not submitted
                             const updates = {};
@@ -883,7 +900,10 @@
                                 }
                             );
 
-                            return gameRef.update(updates);
+                            return update(
+                                ref(database, `games/${gameState.gameId}`),
+                                updates
+                            );
                         })
                         .then(() => {
                             showScreen("hostLobby");
@@ -896,14 +916,13 @@
 
                 // Reset player for new game
                 function resetPlayerForNewGame() {
-                    database
-                        .ref("games")
-                        .child(gameState.gameId)
-                        .child("players")
-                        .child(gameState.playerId)
-                        .update({
-                            submitted: false,
-                        })
+                    const playerRef = ref(
+                        database,
+                        `games/${gameState.gameId}/players/${gameState.playerId}`
+                    );
+                    update(playerRef, {
+                        submitted: false,
+                    })
                         .then(() => {
                             showScreen("playerInput");
                             gameState.gameStarted = false;
@@ -918,18 +937,18 @@
                     if (gameState.gameId) {
                         if (gameState.isHost) {
                             // If host, remove the entire game with proper reference
-                            database
-                                .ref("games")
-                                .child(gameState.gameId)
-                                .remove();
+                            const gameRef = ref(
+                                database,
+                                `games/${gameState.gameId}`
+                            );
+                            remove(gameRef);
                         } else {
                             // If player, just remove themselves with proper reference
-                            database
-                                .ref("games")
-                                .child(gameState.gameId)
-                                .child("players")
-                                .child(gameState.playerId)
-                                .remove();
+                            const playerRef = ref(
+                                database,
+                                `games/${gameState.gameId}/players/${gameState.playerId}`
+                            );
+                            remove(playerRef);
                         }
                     }
 
