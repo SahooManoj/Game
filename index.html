@@ -1018,33 +1018,6 @@
                                         winnerDiv.innerHTML = `<p>🎉 ${winnerNames} won with ${highestScore} points! 🎉</p>`;
                                         resultsContainer.appendChild(winnerDiv);
                                     }
-
-                                    // Add play again and exit buttons
-                                    const buttonsDiv =
-                                        document.createElement("div");
-                                    buttonsDiv.className = "result-buttons";
-                                    buttonsDiv.innerHTML = `
-                <button id="play-again" class="primary-button">Play Again</button>
-                <button id="exit-game" class="secondary-button">Exit Game</button>
-            `;
-                                    resultsContainer.appendChild(buttonsDiv);
-
-                                    // Add event listeners
-                                    document
-                                        .getElementById("play-again")
-                                        .addEventListener("click", () => {
-                                            if (gameState.isHost) {
-                                                resetGame();
-                                            } else {
-                                                resetPlayerForNewGame();
-                                            }
-                                        });
-
-                                    document
-                                        .getElementById("exit-game")
-                                        .addEventListener("click", () => {
-                                            exitGame();
-                                        });
                                 })
                                 .catch((error) => {
                                     console.error(
