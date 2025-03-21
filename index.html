@@ -35,11 +35,11 @@
             // Make Firebase modules available globally (if needed)
             window.app = app;
             window.database = database;
-            window.dbRef = ref;
-            window.dbSet = set;
-            window.dbOnValue = onValue;
-            window.dbUpdate = update;
-            window.dbRemove = remove;
+            window.ref = ref;
+            window.set = set;
+            window.onValue = onValue;
+            window.update = update;
+            window.remove = remove;
 
             // Let other scripts know Firebase is loaded
             document.dispatchEvent(new Event("firebaseLoaded"));
