@@ -525,11 +525,16 @@
                         .classList.add("hidden");
 
                     // Reset votes with proper reference
-                    const gameRef = database
-                        .ref("games")
-                        .child(gameState.gameId);
-                    gameRef.child("votes").set({});
-                    gameRef.child("revealedLie").set(null);
+                    const votesRef = ref(
+                        database,
+                        `games/${gameState.gameId}/votes`
+                    );
+                    const revealedLieRef = ref(
+                        database,
+                        `games/${gameState.gameId}/revealedLie`
+                    );
+                    set(votesRef, {});
+                    set(revealedLieRef, null);
                 }
 
                 // Update current player display for player
